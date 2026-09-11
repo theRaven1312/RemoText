@@ -118,9 +118,9 @@ class TextDetector:
         self,
         lang: str = "ch",
         use_angle_cls: bool = True,
-        det_db_thresh: float = 0.3,
-        rec_score_thresh: float = 0.5,
-        keyframe_interval: int = 15,
+        det_db_thresh: float = 0.25,
+        rec_score_thresh: float = 0.35,
+        keyframe_interval: int = 10,
         scene_change_thresh: float = 0.90,
     ):
         self.lang = lang
@@ -133,34 +133,49 @@ class TextDetector:
         self._ocr = None  # Lazy init
 
     def _init_ocr(self):
-        """Initialize PaddleOCR model lazily."""
+        """Initialize PaddleOCR model lazily, auto-detecting GPU support."""
         if self._ocr is None:
-            # Ensure MKLDNN/oneDNN is disabled for Paddle
+            # Optimize environment flags
             os.environ["FLAGS_use_mkldnn"] = "0"
             os.environ["PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT"] = "0"
             os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
 
+            import paddle
+            use_gpu = False
+            try:
+                if paddle.device.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0:
+                    use_gpu = True
+            except Exception:
+                use_gpu = False
+
             from paddleocr import PaddleOCR
 
-            # PaddleOCR v3.7 API (PaddleX-based backend)
+            ocr_kwargs = {
+                "lang": self.lang,
+                "use_textline_orientation": self.use_angle_cls,
+                "text_det_box_thresh": self.det_db_thresh,
+                "use_doc_orientation_classify": False,
+                "use_doc_unwarping": False,
+            }
+
+            if use_gpu:
+                ocr_kwargs["device"] = "gpu:0"
+                ocr_kwargs["use_gpu"] = True
+                device_name = "GPU (CUDA)"
+            else:
+                ocr_kwargs["device"] = "cpu"
+                ocr_kwargs["use_gpu"] = False
+                ocr_kwargs["enable_mkldnn"] = False
+                device_name = "CPU"
+
             try:
-                self._ocr = PaddleOCR(
-                    lang=self.lang,
-                    use_textline_orientation=self.use_angle_cls,
-                    text_det_box_thresh=self.det_db_thresh,
-                    use_doc_orientation_classify=False,
-                    use_doc_unwarping=False,
-                    enable_mkldnn=False,
-                )
+                self._ocr = PaddleOCR(**ocr_kwargs)
             except TypeError:
-                self._ocr = PaddleOCR(
-                    lang=self.lang,
-                    use_textline_orientation=self.use_angle_cls,
-                    text_det_box_thresh=self.det_db_thresh,
-                    use_doc_orientation_classify=False,
-                    use_doc_unwarping=False,
-                )
-            logger.info(f"PaddleOCR initialized (lang={self.lang})")
+                ocr_kwargs.pop("device", None)
+                ocr_kwargs.pop("enable_mkldnn", None)
+                self._ocr = PaddleOCR(**ocr_kwargs)
+
+            logger.info(f"PaddleOCR initialized on {device_name} (lang={self.lang})")
 
     def detect_single(self, frame: np.ndarray) -> list[TextDetection]:
         """Run OCR detection + recognition on a single frame.
