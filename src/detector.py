@@ -166,17 +166,27 @@ class TextDetector:
                 ocr_kwargs["enable_mkldnn"] = False
                 device_name = "CPU"
 
-            try:
-                self._ocr = PaddleOCR(**ocr_kwargs)
-            except (TypeError, ValueError) as e:
-                logger.warning(f"PaddleOCR init with extra kwargs failed ({e}), falling back to minimal kwargs")
-                minimal_kwargs = {
-                    "lang": self.lang,
-                    "text_det_box_thresh": self.det_db_thresh,
-                }
-                if self.use_angle_cls:
-                    minimal_kwargs["use_textline_orientation"] = True
-                self._ocr = PaddleOCR(**minimal_kwargs)
+            # Attempt initialization with graceful fallbacks across PaddleOCR versions
+            candidate_kwargs = [
+                dict(ocr_kwargs),
+                {k: v for k, v in ocr_kwargs.items() if k != "enable_mkldnn"},
+                {"lang": self.lang, "use_textline_orientation": self.use_angle_cls},
+                {"lang": self.lang, "use_angle_cls": self.use_angle_cls},
+                {"lang": self.lang},
+            ]
+
+            initialized = False
+            for i, kwargs in enumerate(candidate_kwargs):
+                try:
+                    self._ocr = PaddleOCR(**kwargs)
+                    initialized = True
+                    break
+                except (TypeError, ValueError) as e:
+                    logger.debug(f"PaddleOCR init attempt {i+1} failed ({e})")
+                    continue
+
+            if not initialized:
+                self._ocr = PaddleOCR()
 
             logger.info(f"PaddleOCR initialized on {device_name} (lang={self.lang})")
 
