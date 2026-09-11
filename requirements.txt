@@ -1,0 +1,28 @@
+# Core ML frameworks
+paddleocr>=2.8.0
+paddlepaddle>=2.6.0
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Image & Video Processing
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.2.0
+scipy>=1.10.0
+
+# Inpainting models (ProPainter)
+einops>=0.7.0
+timm>=0.9.0
+addict>=2.4.0
+yapf>=0.40.0
+av>=11.0.0
+imageio-ffmpeg>=0.4.0
+matplotlib>=3.7.0
+
+# Utilities, Config & CLI
+pyyaml>=6.0
+tqdm>=4.65
+packaging>=23.0
+
+# Testing
+pytest>=7.0

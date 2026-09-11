@@ -1,0 +1,68 @@
+# Remotext Pipeline Configuration
+
+# --- Preprocessing ---
+preprocessor:
+  frame_format: png          # png (lossless) or jpg (faster, lossy)
+  temp_dir: null             # null = auto create temp dir
+
+# --- Text Detection ---
+detector:
+  model: paddleocr
+  lang: ch                   # ch = Simplified Chinese, chinese_cht = Traditional
+  use_angle_cls: true        # Enable angle classification for rotated text
+  det_db_thresh: 0.25        # Detection confidence threshold (lowered to catch faint text)
+  rec_score_thresh: 0.35     # Recognition confidence threshold (lowered to catch stylized fonts)
+
+  # Keyframe optimization
+  keyframe_interval: 10      # Force OCR every N frames (0.33 sec at 30fps)
+  scene_change_thresh: 0.90  # SSIM threshold - lower = more sensitive to scene changes
+
+# --- Chinese Text Filter ---
+filter:
+  remove_entire_cluster: true   # If text contains Chinese, remove entire text block (inc. numbers/symbols)
+  remove_logos_watermarks: true  # Also remove logos/watermarks containing Chinese
+  min_confidence: 0.35          # Minimum OCR confidence to consider a detection
+
+# --- Mask Generation ---
+mask_generator:
+  dilation_kernel: 3         # Dilation kernel size (pixels)
+  dilation_iterations: 1     # Number of dilation passes
+  feather_radius: 2          # Gaussian blur for mask edge feathering
+  padding: 2                 # Extra padding around detected text (pixels)
+
+# --- Inpainting ---
+inpainter:
+  primary_model: propainter  # propainter or lama
+  fallback_model: lama       # Fallback if primary fails or not enough VRAM
+  
+  # ProPainter settings
+  propainter:
+    chunk_size: 80           # Frames per chunk
+    chunk_overlap: 10        # Overlap between chunks for smooth transitions
+    fp16: false              # Half precision (faster but less stable on MPS)
+  
+  # LaMa settings (fallback)
+  lama:
+    refine_iterations: 1     # Number of refinement passes
+
+# --- Video Assembly ---
+assembler:
+  codec: libx264
+  crf: auto                  # auto = match input quality, or set 0-51
+  preset: slow               # ultrafast/fast/medium/slow/veryslow
+  pixel_format: yuv420p
+  audio_copy: true           # Copy audio without re-encoding
+
+# --- Edge Case Handling ---
+edge_cases:
+  skip_face_regions: false   # Toggle: skip Chinese text overlapping faces
+  face_detection_model: null # Will use OpenCV Haar cascade if enabled
+  min_text_size: 10          # Ignore text smaller than this (pixels height)
+  max_text_size: null        # Ignore text larger than this (null = no limit)
+
+# --- Pipeline ---
+pipeline:
+  device: auto               # auto, cuda, mps, cpu
+  num_workers: 4             # Parallel workers for frame I/O
+  verbose: true              # Show progress bars and logs
+  keep_temp: false           # Keep temporary files after processing
