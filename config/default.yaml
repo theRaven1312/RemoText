@@ -9,7 +9,7 @@ preprocessor:
 detector:
   model: paddleocr
   lang: ch                   # ch = Simplified Chinese, chinese_cht = Traditional
-  use_angle_cls: true        # Enable angle classification for rotated text
+  use_angle_cls: false       # Disable angle cls for video subtitles (saves 60% OCR time)
   det_db_thresh: 0.25        # Detection confidence threshold (lowered to catch faint text)
   rec_score_thresh: 0.35     # Recognition confidence threshold (lowered to catch stylized fonts)
 

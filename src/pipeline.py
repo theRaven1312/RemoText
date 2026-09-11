@@ -27,7 +27,7 @@ class PipelineConfig:
 
     # Detector
     ocr_lang: str = "ch"
-    use_angle_cls: bool = True
+    use_angle_cls: bool = False
     det_db_thresh: float = 0.25
     rec_score_thresh: float = 0.35
     keyframe_interval: int = 10

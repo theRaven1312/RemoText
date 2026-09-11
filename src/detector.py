@@ -117,7 +117,7 @@ class TextDetector:
     def __init__(
         self,
         lang: str = "ch",
-        use_angle_cls: bool = True,
+        use_angle_cls: bool = False,
         det_db_thresh: float = 0.25,
         rec_score_thresh: float = 0.35,
         keyframe_interval: int = 10,
@@ -160,20 +160,23 @@ class TextDetector:
 
             if use_gpu:
                 ocr_kwargs["device"] = "gpu:0"
-                ocr_kwargs["use_gpu"] = True
                 device_name = "GPU (CUDA)"
             else:
                 ocr_kwargs["device"] = "cpu"
-                ocr_kwargs["use_gpu"] = False
                 ocr_kwargs["enable_mkldnn"] = False
                 device_name = "CPU"
 
             try:
                 self._ocr = PaddleOCR(**ocr_kwargs)
-            except TypeError:
-                ocr_kwargs.pop("device", None)
-                ocr_kwargs.pop("enable_mkldnn", None)
-                self._ocr = PaddleOCR(**ocr_kwargs)
+            except (TypeError, ValueError) as e:
+                logger.warning(f"PaddleOCR init with extra kwargs failed ({e}), falling back to minimal kwargs")
+                minimal_kwargs = {
+                    "lang": self.lang,
+                    "text_det_box_thresh": self.det_db_thresh,
+                }
+                if self.use_angle_cls:
+                    minimal_kwargs["use_textline_orientation"] = True
+                self._ocr = PaddleOCR(**minimal_kwargs)
 
             logger.info(f"PaddleOCR initialized on {device_name} (lang={self.lang})")
 
